@@ -31,3 +31,4 @@ jobs:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
           base-path: ./base
           head-path: ./head
+        
