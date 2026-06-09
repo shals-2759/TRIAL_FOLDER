@@ -32,6 +32,11 @@ jobs:
           else
             echo "API KEY EXISTS"
           fi
+      - name: Check PR Context
+        run: |
+          echo "Owner: ${{ github.repository_owner }}"
+          echo "Repo: ${{ github.event.repository.name }}"
+          echo "PR Number: ${{ github.event.pull_request.number }}"
 
       - name: Run Infracost Diff
         uses: infracost/actions/diff@v4
@@ -40,8 +45,4 @@ jobs:
           base-path: ./base
           head-path: ./head
         
-      - name: Check event
-        run: |
-          echo "PR Number: ${{ github.event.pull_request.number }}"
-          echo "Repository: ${{ github.repository }}"
-          echo "Owner: ${{ github.repository_owner }}"
+      
