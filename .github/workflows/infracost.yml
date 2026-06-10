@@ -1,9 +1,9 @@
 name: Infracost
 
 on:
-  push:
+  pull_request:
     branches:
-      - final
+      - main
 
 permissions:
   contents: read
@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout final branch
+      - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
           path: head
@@ -37,3 +37,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           base-path: ./base
           head-path: ./head
+          github-owner: ${{ github.repository_owner }}
+          github-repo: ${{ github.event.repository.name }}
+          pr-number: ${{ github.event.pull_request.number }}
