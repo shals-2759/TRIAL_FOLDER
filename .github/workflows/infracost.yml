@@ -12,30 +12,35 @@ permissions:
 jobs:
   infracost:
     runs-on: ubuntu-latest
-    env:
-      TF_ROOT: .
 
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v4
+        with:
+          path: head
+
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: base
 
       - name: Setup Infracost
         uses: infracost/actions/setup@v3
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
 
-      - name: Generate Infracost cost estimate (baseline)
+      - name: Generate baseline cost estimate
         run: |
-          git fetch origin main
-          git stash
-          infracost breakdown --path=${TF_ROOT} \
+          infracost breakdown \
+            --path=./base \
             --format=json \
             --out-file=/tmp/infracost-base.json
-          git stash pop
 
-      - name: Generate Infracost cost estimate (PR)
+      - name: Generate PR cost estimate
         run: |
-          infracost breakdown --path=${TF_ROOT} \
+          infracost breakdown \
+            --path=./head \
             --format=json \
             --out-file=/tmp/infracost-head.json
 
@@ -46,7 +51,6 @@ jobs:
             --compare-to=/tmp/infracost-base.json \
             --format=github-comment \
             --out-file=/tmp/infracost-comment.md
-          
           gh pr comment ${{ github.event.pull_request.number }} \
             --body-file /tmp/infracost-comment.md \
             --repo ${{ github.repository }}
