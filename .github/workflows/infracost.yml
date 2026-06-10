@@ -44,6 +44,7 @@ jobs:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
           base-path: ./base
           head-path: ./head
+          org-token: ${{ secrets.INFRACOST_ORG_TOKEN }}
           github-owner: ${{ github.repository_owner }}
           github-repo: ${{ github.event.repository.name }}
           pr-number: ${{ github.event.pull_request.number }}
