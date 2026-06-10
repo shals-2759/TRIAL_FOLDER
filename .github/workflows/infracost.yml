@@ -1,9 +1,6 @@
 name: Infracost
 
 on:
-  push:
-    branches:
-      - final
   pull_request:
     branches:
       - main
@@ -14,9 +11,6 @@ permissions:
 
 jobs:
   infracost:
-    # Only post comments when the workflow is running for a PR
-    if: github.event_name == 'pull_request'
-
     runs-on: ubuntu-latest
 
     steps:
