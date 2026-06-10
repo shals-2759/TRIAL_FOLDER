@@ -25,6 +25,16 @@ jobs:
           ref: main
           path: base
 
+      # ADD THIS STEP to catch missing secret early
+      - name: Check secret exists
+        run: |
+          if [ -z "${{ secrets.INFRACOST_API_KEY }}" ]; then
+            echo "::error::INFRACOST_API_KEY secret is missing or empty!"
+            exit 1
+          else
+            echo "Secret is present."
+          fi
+
       - name: Run Infracost Diff
         uses: infracost/actions/diff@v4
         with:
