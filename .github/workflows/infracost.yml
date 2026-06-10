@@ -3,7 +3,7 @@ name: Infracost
 on:
   push:
     branches:
-      - '**'
+      - final
   pull_request:
     branches:
       - main
