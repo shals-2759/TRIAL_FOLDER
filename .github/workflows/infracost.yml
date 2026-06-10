@@ -1,6 +1,9 @@
-name: Infracost Test
+name: Infracost
 
 on:
+  push:
+    branches:
+      - '**'
   pull_request:
     branches:
       - main
@@ -11,6 +14,9 @@ permissions:
 
 jobs:
   infracost:
+    # Only post comments when the workflow is running for a PR
+    if: github.event_name == 'pull_request'
+
     runs-on: ubuntu-latest
 
     steps:
@@ -30,32 +36,13 @@ jobs:
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
 
-      - name: Generate baseline cost estimate
-        run: |
-          infracost breakdown \
-            --path=./base \
-            --format=json \
-            --out-file=/tmp/infracost-base.json
-
-      - name: Generate PR cost estimate
-        run: |
-          infracost breakdown \
-            --path=./head \
-            --format=json \
-            --out-file=/tmp/infracost-head.json
-
-      - name: Post Infracost comment
-        run: |
-          # Generate diff output as text
-          infracost diff \
-            --path=/tmp/infracost-head.json \
-            --compare-to=/tmp/infracost-base.json \
-            --format=diff \
-            --out-file=/tmp/infracost-comment.txt
-
-          # Post as PR comment
-          gh pr comment ${{ github.event.pull_request.number }} \
-            --body "$(cat /tmp/infracost-comment.txt)" \
-            --repo ${{ github.repository }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Infracost Diff
+        uses: infracost/actions/diff@v4
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          base-path: ./base
+          head-path: ./head
+          github-owner: ${{ github.repository_owner }}
+          github-repo: ${{ github.event.repository.name }}
+          pr-number: ${{ github.event.pull_request.number }}
