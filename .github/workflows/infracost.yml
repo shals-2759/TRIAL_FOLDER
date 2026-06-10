@@ -1,9 +1,9 @@
-name: Infracost Test
-
+name: Infracost
 on:
   pull_request:
-    branches:
-      - main
+    paths:
+      - '**/*.tf'
+      - '**/*.tfvars'
 
 permissions:
   contents: read
@@ -12,51 +12,43 @@ permissions:
 jobs:
   infracost:
     runs-on: ubuntu-latest
+    name: Cost estimate
 
     steps:
-      - name: Checkout PR branch
+      # Checkout BASE branch first and generate its cost
+      - name: Checkout base branch
         uses: actions/checkout@v4
         with:
-          path: head
-
-      - name: Checkout main branch
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: base
+          ref: ${{ github.event.pull_request.base.ref }}
 
       - name: Setup Infracost
         uses: infracost/actions/setup@v3
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
 
-      - name: Generate baseline cost estimate
+      - name: Generate Infracost JSON (base branch)
         run: |
           infracost breakdown \
-            --path=./base \
+            --path=. \
             --format=json \
             --out-file=/tmp/infracost-base.json
 
-      - name: Generate PR cost estimate
+      # Then checkout PR branch and generate its cost
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+
+      - name: Generate Infracost JSON (PR branch)
         run: |
           infracost breakdown \
-            --path=./head \
+            --path=. \
             --format=json \
-            --out-file=/tmp/infracost-head.json
+            --out-file=/tmp/infracost-pr.json
 
-      - name: Generate diff
-        run: |
-          infracost diff \
-            --path=/tmp/infracost-head.json \
-            --compare-to=/tmp/infracost-base.json \
-            --format=json \
-            --out-file=/tmp/infracost-diff.json
-
-      - name: Post Infracost comment
-        run: |
-          infracost comment github \
-            --path=/tmp/infracost-diff.json \
-            --repo=${{ github.repository }} \
-            --github-token=${{ secrets.GITHUB_TOKEN }} \
-            --pull-request=${{ github.event.pull_request.number }} \
-            --behavior=update
+      # Post the diff comment
+      - name: Post cost diff comment on PR
+        uses: infracost/actions/comment@v3
+        with:
+          path: /tmp/infracost-pr.json
+          compare-to: /tmp/infracost-base.json
+          behavior: update
+          github-token: ${{ secrets.GITHUB_TOKEN }}
