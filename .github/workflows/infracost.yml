@@ -1,4 +1,4 @@
-name: Infracost
+name: Infracost Test
 
 on:
   pull_request:
@@ -29,22 +29,34 @@ jobs:
         uses: infracost/actions/setup@v3
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
-      - name: Check secret exists
-        run: |
-          if [ -z "${{ secrets.INFRACOST_API_KEY }}" ]; then
-            echo "Secret missing"
-            exit 1
-          else
-            echo "Secret found"
-          fi
 
-      - name: Infracost Diff
-        uses: infracost/actions/diff@v4
-        with:
-          api-key: ${{ secrets.INFRACOST_API_KEY }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          base-path: ./base
-          head-path: ./head
-          github-owner: ${{ github.repository_owner }}
-          github-repo: ${{ github.event.repository.name }}
-          pr-number: ${{ github.event.pull_request.number }}
+      - name: Generate baseline cost estimate
+        run: |
+          infracost breakdown \
+            --path=./base \
+            --format=json \
+            --out-file=/tmp/infracost-base.json
+
+      - name: Generate PR cost estimate
+        run: |
+          infracost breakdown \
+            --path=./head \
+            --format=json \
+            --out-file=/tmp/infracost-head.json
+
+      - name: Generate diff
+        run: |
+          infracost diff \
+            --path=/tmp/infracost-head.json \
+            --compare-to=/tmp/infracost-base.json \
+            --format=json \
+            --out-file=/tmp/infracost-diff.json
+
+      - name: Post Infracost comment
+        run: |
+          infracost comment github \
+            --path=/tmp/infracost-diff.json \
+            --repo=${{ github.repository }} \
+            --github-token=${{ secrets.GITHUB_TOKEN }} \
+            --pull-request=${{ github.event.pull_request.number }} \
+            --behavior=update
