@@ -46,13 +46,16 @@ jobs:
 
       - name: Post Infracost comment
         run: |
+          # Generate diff output as text
           infracost diff \
             --path=/tmp/infracost-head.json \
             --compare-to=/tmp/infracost-base.json \
-            --format=github-comment \
-            --out-file=/tmp/infracost-comment.md
+            --format=diff \
+            --out-file=/tmp/infracost-comment.txt
+
+          # Post as PR comment
           gh pr comment ${{ github.event.pull_request.number }} \
-            --body-file /tmp/infracost-comment.md \
+            --body "$(cat /tmp/infracost-comment.txt)" \
             --repo ${{ github.repository }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
