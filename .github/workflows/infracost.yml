@@ -12,41 +12,43 @@ permissions:
 jobs:
   infracost:
     runs-on: ubuntu-latest
+    env:
+      TF_ROOT: .
 
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v4
-        with:
-          path: head
 
-      - name: Checkout main branch
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: base
-      - name: Check secret exists
-        run: |
-          if [ -z "${{ secrets.INFRACOST_API_KEY }}" ]; then
-            echo "API KEY IS EMPTY"
-            exit 1
-          else
-            echo "API KEY EXISTS"
-          fi
-      - name: Check PR Context
-        run: |
-          echo "Owner: ${{ github.repository_owner }}"
-          echo "Repo: ${{ github.event.repository.name }}"
-          echo "PR Number: ${{ github.event.pull_request.number }}"
-
-      - name: Run Infracost Diff
-        uses: infracost/actions/diff@v4
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
-          base-path: ./base
-          head-path: ./head
-          org-token: ${{ secrets.INFRACOST_ORG_TOKEN }}
-          github-owner: ${{ github.repository_owner }}
-          github-repo: ${{ github.event.repository.name }}
-          pr-number: ${{ github.event.pull_request.number }}
-        
-      
+
+      - name: Generate Infracost cost estimate (baseline)
+        run: |
+          git fetch origin main
+          git stash
+          infracost breakdown --path=${TF_ROOT} \
+            --format=json \
+            --out-file=/tmp/infracost-base.json
+          git stash pop
+
+      - name: Generate Infracost cost estimate (PR)
+        run: |
+          infracost breakdown --path=${TF_ROOT} \
+            --format=json \
+            --out-file=/tmp/infracost-head.json
+
+      - name: Post Infracost comment
+        run: |
+          infracost diff \
+            --path=/tmp/infracost-head.json \
+            --compare-to=/tmp/infracost-base.json \
+            --format=github-comment \
+            --out-file=/tmp/infracost-comment.md
+          
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body-file /tmp/infracost-comment.md \
+            --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
