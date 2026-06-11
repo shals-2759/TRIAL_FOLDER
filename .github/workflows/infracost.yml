@@ -34,7 +34,6 @@ jobs:
             --path=. \
             --format=json \
             --out-file=/tmp/infracost-base.json
-
       # Checkout PR branch
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -46,13 +45,14 @@ jobs:
             --path=. \
             --format=json \
             --out-file=/tmp/infracost-pr.json
-
       # Create and post diff comment
       - name: Post Infracost comment
-        uses: infracost/actions/comment@v2
+        uses: infracost/actions/diff@v4
+        env:
+          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+          INFRACOST_LOG_LEVEL: debug
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
           github-token: ${{ github.token }}
           base-path: /tmp/infracost-base.json
           head-path: /tmp/infracost-pr.json
-       
