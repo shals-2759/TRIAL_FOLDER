@@ -1,9 +1,10 @@
-name: Infracost Test
+name: Infracost
 
 on:
   pull_request:
-    branches:
-      - main
+    paths:
+      - '**/*.tf'
+      - '**/*.tfvars'
 
 permissions:
   contents: read
@@ -14,20 +15,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout PR branch
+      # Checkout base branch
+      - name: Checkout base branch
         uses: actions/checkout@v4
         with:
-          path: head
+          ref: ${{ github.event.pull_request.base.ref }}
 
-      - name: Checkout main branch
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: base
-
-      - name: Run Infracost Diff
-        uses: infracost/actions/diff@v4
+      # Install Infracost
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
-          base-path: ./base
-          head-path: ./head
+
+      # Generate cost for base branch
+      - name: Generate base cost estimate
+        run: |
+          infracost breakdown \
+            --path=. \
+            --format=json \
+            --out-file=/tmp/infracost-base.json
+      # Checkout PR branch
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+
+      # Generate cost for PR branch
+      - name: Generate PR cost estimate
+        run: |
+          infracost breakdown \
+            --path=. \
+            --format=json \
+            --out-file=/tmp/infracost-pr.json
+      # Create and post diff comment
+      - name: Post Infracost comment
+        uses: infracost/actions/diff@v4
+        env:
+          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+          INFRACOST_LOG_LEVEL: debug
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+          github-token: ${{ github.token }}
+          base-path: /tmp/infracost-base.json
+          head-path: /tmp/infracost-pr.json
