@@ -1,4 +1,5 @@
 name: Infracost
+
 on:
   pull_request:
     paths:
@@ -12,43 +13,46 @@ permissions:
 jobs:
   infracost:
     runs-on: ubuntu-latest
-    name: Cost estimate
 
     steps:
-      # Checkout BASE branch first and generate its cost
+      # Checkout base branch
       - name: Checkout base branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.ref }}
 
+      # Install Infracost
       - name: Setup Infracost
         uses: infracost/actions/setup@v3
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
 
-      - name: Generate Infracost JSON (base branch)
+      # Generate cost for base branch
+      - name: Generate base cost estimate
         run: |
           infracost breakdown \
             --path=. \
             --format=json \
             --out-file=/tmp/infracost-base.json
 
-      # Then checkout PR branch and generate its cost
+      # Checkout PR branch
       - name: Checkout PR branch
         uses: actions/checkout@v4
 
-      - name: Generate Infracost JSON (PR branch)
+      # Generate cost for PR branch
+      - name: Generate PR cost estimate
         run: |
           infracost breakdown \
             --path=. \
             --format=json \
             --out-file=/tmp/infracost-pr.json
 
-      # Post the diff comment
-      - name: Post cost diff comment on PR
+      # Create and post diff comment
+      - name: Post Infracost comment
         uses: infracost/actions/diff@v4
         with:
-          path: /tmp/infracost-pr.json
-          compare-to: /tmp/infracost-base.json
-          behavior: update
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+          github-token: ${{ github.token }}
+          base-path: /tmp/infracost-base.json
+          head-path: /tmp/infracost-pr.json
+          
