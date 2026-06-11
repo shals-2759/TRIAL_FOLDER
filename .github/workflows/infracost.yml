@@ -49,7 +49,7 @@ jobs:
 
       # Create and post diff comment
       - name: Post Infracost comment
-        uses: infracost/actions/diff@v2
+        uses: infracost/actions/comment@v2
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
           github-token: ${{ github.token }}
