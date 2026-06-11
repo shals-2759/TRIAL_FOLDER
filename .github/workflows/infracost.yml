@@ -46,7 +46,7 @@ jobs:
 
       # Post the diff comment
       - name: Post cost diff comment on PR
-        uses: infracost/actions/comment@v3
+        uses: infracost/actions/diff@v4
         with:
           path: /tmp/infracost-pr.json
           compare-to: /tmp/infracost-base.json
