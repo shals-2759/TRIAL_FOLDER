@@ -25,9 +25,38 @@ jobs:
           ref: main
           path: base
 
-      - name: Run Infracost Diff
-        uses: infracost/actions/diff@v4
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
-          base-path: ./base
-          head-path: ./head
+
+      - name: Generate baseline cost estimate
+        run: |
+          infracost breakdown \
+            --path=./base \
+            --format=json \
+            --out-file=/tmp/infracost-base.json
+
+      - name: Generate PR cost estimate
+        run: |
+          infracost breakdown \
+            --path=./head \
+            --format=json \
+            --out-file=/tmp/infracost-head.json
+
+      - name: Generate diff
+        run: |
+          infracost diff \
+            --path=/tmp/infracost-head.json \
+            --compare-to=/tmp/infracost-base.json \
+            --format=json \
+            --out-file=/tmp/infracost-diff.json
+
+      - name: Post Infracost comment
+        run: |
+          infracost comment github \
+            --path=/tmp/infracost-diff.json \
+            --repo=${{ github.repository }} \
+            --github-token=${{ secrets.GITHUB_TOKEN }} \
+            --pull-request=${{ github.event.pull_request.number }} \
+            --behavior=update
