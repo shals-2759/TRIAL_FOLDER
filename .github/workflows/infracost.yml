@@ -1,10 +1,9 @@
-name: Infracost 
+name: Infracost Test
 
 on:
   pull_request:
-    paths:
-      - '**/*.tf'
-      - '**/*.tfvars'
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -13,7 +12,6 @@ permissions:
 jobs:
   infracost:
     runs-on: ubuntu-latest
-    name: Cost estimate
 
     steps:
       - name: Checkout PR branch
@@ -46,18 +44,19 @@ jobs:
             --format=json \
             --out-file=/tmp/infracost-head.json
 
-      - name: Post Infracost comment
+      - name: Generate diff
         run: |
-          # Generate diff output as text
           infracost diff \
             --path=/tmp/infracost-head.json \
             --compare-to=/tmp/infracost-base.json \
-            --format=diff \
-            --out-file=/tmp/infracost-comment.txt
+            --format=json \
+            --out-file=/tmp/infracost-diff.json
 
-          # Post as PR comment
-          gh pr comment ${{ github.event.pull_request.number }} \
-            --body "$(cat /tmp/infracost-comment.txt)" \
-            --repo ${{ github.repository }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Post Infracost comment
+        run: |
+          infracost comment github \
+            --path=/tmp/infracost-diff.json \
+            --repo=${{ github.repository }} \
+            --github-token=${{ secrets.GITHUB_TOKEN }} \
+            --pull-request=${{ github.event.pull_request.number }} \
+            --behavior=update
