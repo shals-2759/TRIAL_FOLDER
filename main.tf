@@ -5,6 +5,11 @@ provider "azurerm" {
 resource "azurerm_resource_group" "rg" {
   name     = "storage_resource_group"
   location = "Central India"
+
+  tags = {
+    Service     = "StorageApp"   # any meaningful service name
+    Environment = "Dev"          # must be Dev / Stage / Prod
+  }
 }
 
 resource "azurerm_virtual_network" "vn" {
