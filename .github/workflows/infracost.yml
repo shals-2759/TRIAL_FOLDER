@@ -1,9 +1,10 @@
-name: Infracost Test
+name: Infracost 
 
 on:
   pull_request:
-    branches:
-      - main
+    paths:
+      - '**/*.tf'
+      - '**/*.tfvars'
 
 permissions:
   contents: read
@@ -12,6 +13,7 @@ permissions:
 jobs:
   infracost:
     runs-on: ubuntu-latest
+    name: Cost estimate
 
     steps:
       - name: Checkout PR branch
