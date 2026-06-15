@@ -2,14 +2,18 @@ provider "azurerm" {
   features {}
 }
 
+# ✅ Reusable tags
+locals {
+  common_tags = {
+    Service     = "StorageApp"
+    Environment = "Dev"
+  }
+}
+
 resource "azurerm_resource_group" "rg" {
   name     = "storage_resource_group"
   location = "Central India"
-
-  tags = {
-    Service     = "StorageApp"   # any meaningful service name
-    Environment = "Dev"          # must be Dev / Stage / Prod
-  }
+  tags     = local.common_tags
 }
 
 resource "azurerm_virtual_network" "vn" {
@@ -17,6 +21,8 @@ resource "azurerm_virtual_network" "vn" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   address_space       = ["10.0.0.0/16"]
+
+  tags = local.common_tags
 }
 
 resource "azurerm_subnet" "sn" {
@@ -24,7 +30,6 @@ resource "azurerm_subnet" "sn" {
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vn.name
   address_prefixes     = ["10.0.2.0/24"]
-
 }
 
 resource "azurerm_public_ip" "pip" {
@@ -32,12 +37,16 @@ resource "azurerm_public_ip" "pip" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Static"
+
+  tags = local.common_tags
 }
 
 resource "azurerm_network_security_group" "nsg" {
   name                = "storage-nsg"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
+
+  tags = local.common_tags
 
   security_rule {
     name                       = "AllowSSH"
@@ -62,6 +71,8 @@ resource "azurerm_network_interface" "nic" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 
+  tags = local.common_tags
+
   ip_configuration {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.sn.id
@@ -77,6 +88,8 @@ resource "azurerm_linux_virtual_machine" "vm" {
   size                = "Standard_D2_v5"
   admin_username      = "adminuser"
 
+  tags = local.common_tags
+
   network_interface_ids = [
     azurerm_network_interface.nic.id,
   ]
@@ -91,7 +104,6 @@ resource "azurerm_linux_virtual_machine" "vm" {
     storage_account_type = "Standard_LRS"
   }
 
-  # ✅ FIXED IMAGE REFERENCE
   source_image_reference {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-noble"
@@ -106,22 +118,17 @@ resource "azurerm_storage_account" "sa" {
   location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-    public_network_access_enabled = false
+  public_network_access_enabled = false
 
-  # Required FinOps tags (fixes tagging policy issue)
-  tags = {
-    Service     = "Storage"
-    Environment = "Dev"
-  }
+  tags = local.common_tags
 
   blob_properties {
     last_access_time_enabled = true
   }
 }
 
-# Lifecycle policy (fixes governance recommendation)
 resource "azurerm_storage_management_policy" "test" {
-  storage_account_id = azurerm_storage_account.test.id
+  storage_account_id = azurerm_storage_account.sa.id
 
   rule {
     name    = "cleanup-rule"
@@ -142,6 +149,8 @@ resource "azurerm_storage_management_policy" "test" {
 resource "azurerm_private_dns_zone" "pdns" {
   name                = "privatelink.blob.core.windows.net"
   resource_group_name = azurerm_resource_group.rg.name
+
+  tags = local.common_tags
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "blob_link" {
@@ -149,6 +158,8 @@ resource "azurerm_private_dns_zone_virtual_network_link" "blob_link" {
   resource_group_name   = azurerm_resource_group.rg.name
   private_dns_zone_name = azurerm_private_dns_zone.pdns.name
   virtual_network_id    = azurerm_virtual_network.vn.id
+
+  tags = local.common_tags
 }
 
 resource "azurerm_private_endpoint" "pe" {
@@ -156,6 +167,8 @@ resource "azurerm_private_endpoint" "pe" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   subnet_id           = azurerm_subnet.sn.id
+
+  tags = local.common_tags
 
   private_service_connection {
     name                           = "storage-connection"
@@ -173,10 +186,8 @@ resource "azurerm_private_endpoint" "pe" {
 }
 
 resource "azurerm_storage_container" "sc" {
-  name                  = "storagecontainer01"
-  storage_account_name  = azurerm_storage_account.sa.name
-
-  # safer + recommended
+  name                 = "storagecontainer01"
+  storage_account_name = azurerm_storage_account.sa.name
   container_access_type = "private"
 }
 
