@@ -14,4 +14,10 @@ provider "azurerm" {
 resource "azurerm_resource_group" "test" {
   name     = "rg-infracost-test"
   location = "East US"
+  
+tags = {
+    Service     = "StorageApp"   # any meaningful service name
+    Environment = "Dev"          # must be Dev / Stage / Prod
+  }
+
 }
